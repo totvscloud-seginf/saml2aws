@@ -21,7 +21,7 @@ session = None
 def login(username, password) -> requests.Response:
     global session
     session = requests.Session()
-    session.get(adfs_url, verify=False)
+    session.get(adfs_url) # add verify=False if your ADFS uses SelfSigned Certificate
     data = {
         "Username": username,
         "Password": password,
