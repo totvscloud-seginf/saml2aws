@@ -21,7 +21,7 @@ session = None
 def login(username, password) -> requests.Response:
     global session
     session = requests.Session()
-    session.get(adfs_url)
+    session.get(adfs_url, verify=False)
     data = {
         "Username": username,
         "Password": password,
@@ -31,7 +31,7 @@ def login(username, password) -> requests.Response:
     return session.post(adfs_url, data=data)
 
 def get_saml(request:requests.Response) -> str:
-    soup = BeautifulSoup(request.text)
+    soup = BeautifulSoup(request.text, features="lxml")
     assertion = ''
     # Look for the SAMLResponse attribute of the input tag (determined by
     # analyzing the debug print lines above)
