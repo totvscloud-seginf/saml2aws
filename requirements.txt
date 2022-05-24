@@ -1,0 +1,8 @@
+boto3
+getpass
+requests
+urllib.parse
+base64
+xml.etree.ElementTree
+bs4
+json
