@@ -67,7 +67,7 @@ session.get(adfs_url, verify=False)
 
 ### 2. SSL Validation error after choosing the role to be assumed
 
-This is a rare and odd case, but iy may happen if you have some kind of SSL Inspection solution sniffing your API calls. That usually can be verified on your endpoint protection solution (Antivirus, EDR, etc) or on network tools (IPS, NGFW, CASB, etc).
+This is a rare and odd case, but it may happen if you have some kind of SSL Inspection solution sniffing your API calls. That usually can be verified on your endpoint protection solution (Antivirus, EDR, etc) or on network tools (IPS, NGFW, CASB, etc).
 In that case the best solution is to ask your IT Department to exclude the <strong>https://sts.amazonaws.com endpoint from the scanning filter</strong> categorizing it as a exception.
 If that's not possible, add the same parameter to ignore validation on the assume_role funtion.
 
@@ -78,3 +78,14 @@ with
 client = boto3.client('sts', verify=False)
 ```
 
+## 3. STS Endpoint error
+
+Another really odd case. For some reason that could not be understood the assule_role call may use an invalid endpoint <strong>'https://sts..amazonaws.com'</strong>. This double dot (..) is wrong and really can't figure why it happens since this is predefined by the boto3 sdk.
+If that's the case, forcing the correct endpoint should solve the problem.
+
+On the function assume_role() replace:
+```python
+client = boto3.client('sts')
+with 
+client = boto3.client('sts', endpoint="https://sts.amazonaws.com")
+```
