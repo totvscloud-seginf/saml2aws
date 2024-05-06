@@ -9,7 +9,9 @@ import xml.etree.ElementTree as ET
 from bs4 import BeautifulSoup
 import json
 
+VALIDATE_SSL=False
 
+LOGIN_ERROR_MATCH = "ID de usu&#225;rio ou senha incorreta. Digite a ID de usu&#225;rio e a senha corretas e tente novamente."
 
 adfs_domain = input("Insert your ADFS Portal domain name or ip: ")
 adfs_url = f"https://{adfs_domain}/adfs/ls/idpinitiatedsignon.aspx?loginToRp=urn:amazon:webservices"
@@ -21,14 +23,19 @@ session = None
 def login(username, password) -> requests.Response:
     global session
     session = requests.Session()
-    session.get(adfs_url) # add verify=False if your ADFS uses SelfSigned Certificate
+    session.get(adfs_url, verify=VALIDATE_SSL) # add verify=False if your ADFS uses SelfSigned Certificate
     data = {
         "Username": username,
         "Password": password,
         "AuthMethod":"FormsAuthentication",
     }
     data = urllib.parse.urlencode(data)
-    return session.post(adfs_url, data=data)
+    r = session.post(adfs_url, data=data, verify=VALIDATE_SSL)
+    if r.status_code != 200:
+        raise Exception(f"invalid credentials or service unavailable. ({r.status_code}) - {r.text}")
+    if LOGIN_ERROR_MATCH in r.text:
+        raise Exception("invalid credentials")
+    return r
 
 def get_saml(request:requests.Response) -> str:
     soup = BeautifulSoup(request.text, features="lxml")
@@ -39,6 +46,10 @@ def get_saml(request:requests.Response) -> str:
         if(inputtag.get('name') == 'SAMLResponse'):
             #print(inputtag.get('value'))
             assertion = inputtag.get('value')
+
+    if not assertion:
+        raise Exception("SAML is empty")
+
     return assertion
 
 def get_roles_available(saml:str) -> list:
@@ -65,14 +76,15 @@ def assume_role(role_arn, principal_arn, saml_assertion) -> dict:
         SAMLAssertion=saml_assertion,
         DurationSeconds=3600
     )
-    
+
     return response["Credentials"]
 
 
 print("Authenticating..")
 login_response = login(username, password)
+print("Getting SAML")
 xml_saml_response = get_saml(login_response)
-
+print("Getting roles")
 roles = get_roles_available(xml_saml_response)
 
 counter = 1
@@ -93,11 +105,11 @@ while True:
     except ValueError:
         print("Invalid input")
         continue
-    
+
     if role_to_access < 1 or role_to_access > max_roles_available:
         print("Invalid input")
         continue
-    
+
     break
 
 accessed_role = roles[role_to_access-1]
@@ -105,13 +117,15 @@ principal_arn = accessed_role.split(",")[0]
 role_arn = accessed_role.split(",")[1]
 
 try:
+    print("assuming role")
     credentials = assume_role(
-        role_arn=role_arn, 
+        role_arn=role_arn,
         principal_arn=principal_arn,
         saml_assertion=xml_saml_response,
     )
 except Exception as e:
-    print("An unexpected error occured...")
+    print(f"An unexpected error occured, error: {e}")
+    raise Exception(f"Failed to assume role. Error: {e}")
 
 
 
