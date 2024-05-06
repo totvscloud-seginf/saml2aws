@@ -1,8 +1,4 @@
-boto3
-getpass
-requests
-urllib.parse
-base64
-xml.etree.ElementTree
-bs4
-json
+boto3==1.34.29
+requests==2.31.0
+beautifulsoup4==4.12.3
+lxml==5.1.0
